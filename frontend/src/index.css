@@ -1,0 +1,107 @@
+/* Import Premium Typography */
+@import url('https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@500;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+
+@theme {
+  --color-brand-primary: #D97757;
+  --color-brand-hover: #BF5B3D;
+  
+  --color-bg-warm: #FAF9F5;
+  --color-surface-warm: #FFFFFF;
+  --color-border-warm: #E8E4DA;
+  
+  --color-bg-dark: #1A1815;
+  --color-surface-dark: #252220;
+  --color-border-dark: #3A362F;
+  
+  --color-text-primary-light: #2D2A26;
+  --color-text-primary-dark: #F5F2EA;
+  --color-text-muted: #8A8478;
+  
+  --color-success-warm: #7A9471;
+  
+  --font-display: 'Cabinet Grotesk', 'Inter', sans-serif;
+  --font-sans: 'Inter', sans-serif;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-bg-warm);
+    color: var(--color-text-primary-light);
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  body.dark {
+    background-color: var(--color-bg-dark);
+    color: var(--color-text-primary-dark);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 700;
+  }
+
+  /* Custom Print styles for pixel-perfect PDF export */
+  @media print {
+    body {
+      background-color: white !important;
+      color: black !important;
+    }
+    .no-print {
+      display: none !important;
+    }
+    .print-only {
+      display: block !important;
+    }
+    .print-container {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+    }
+  }
+}
+
+/* Custom animations & keyframes */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(217, 119, 87, 0.2);
+    border-color: var(--color-border-warm);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(217, 119, 87, 0.4);
+    border-color: var(--color-brand-primary);
+  }
+}
+
+.glow-active {
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+/* Scrollbar styles matching the warm theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+body.dark ::-webkit-scrollbar-thumb {
+  background: var(--color-border-dark);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-warm);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brand-primary);
+}
