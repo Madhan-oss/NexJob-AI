@@ -26,7 +26,7 @@ function cleanJsonResponse(text) {
  */
 export async function parseResume(rawText) {
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-2.0-flash',
     generationConfig: {
       responseMimeType: 'application/json',
     },
@@ -100,7 +100,7 @@ export async function parseResume(rawText) {
  */
 export async function analyzeJobDescription(jdText) {
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-2.0-flash',
     generationConfig: {
       responseMimeType: 'application/json',
     },
@@ -140,7 +140,7 @@ export async function analyzeJobDescription(jdText) {
  */
 export async function calculateMatchScore(parsedResume, jdAnalysis) {
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-2.0-flash',
     generationConfig: {
       responseMimeType: 'application/json',
     },
@@ -186,7 +186,7 @@ export async function calculateMatchScore(parsedResume, jdAnalysis) {
  */
 export async function tailorResume(parsedResume, jdAnalysis, tone = 'balanced') {
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-pro', // Using Pro for deeper reasoning and high-fidelity rewrites
+    model: 'gemini-2.0-flash', // Using flash for resume tailoring
     generationConfig: {
       responseMimeType: 'application/json',
     },
@@ -283,7 +283,7 @@ export async function tailorResume(parsedResume, jdAnalysis, tone = 'balanced') 
  */
 export async function generateCoverLetter(parsedResume, jdAnalysis) {
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-2.0-flash',
     generationConfig: {
       responseMimeType: 'application/json',
     },

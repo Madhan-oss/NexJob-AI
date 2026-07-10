@@ -3,6 +3,8 @@
 
 @import "tailwindcss";
 
+/* Enable class-based dark mode for Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --color-brand-primary: #D97757;
@@ -34,7 +36,7 @@
     transition: background-color 0.3s ease, color 0.3s ease;
   }
   
-  body.dark {
+  html.dark body {
     background-color: var(--color-bg-dark);
     color: var(--color-text-primary-dark);
   }
@@ -92,7 +94,7 @@
   background: transparent;
 }
 
-body.dark ::-webkit-scrollbar-thumb {
+html.dark ::-webkit-scrollbar-thumb {
   background: var(--color-border-dark);
   border-radius: 4px;
 }
