@@ -270,7 +270,7 @@ export const UploadStep: React.FC = () => {
               value={jdText}
               onChange={(e) => setJdText(e.target.value)}
               placeholder="Paste the full job posting here, including description, requirements, skills, and about the company..."
-              className="flex-1 w-full border border-border-warm bg-surface-warm p-4 rounded-2xl text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 dark:border-border-dark dark:bg-surface-dark dark:text-text-primary-dark transition-all duration-300 min-h-[250px] resize-none font-sans"
+              className="flex-1 w-full border border-border-warm bg-surface-warm p-4 rounded-2xl text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 dark:border-border-dark dark:bg-surface-dark text-text-primary-light dark:text-text-primary-dark placeholder:text-text-muted/65 transition-all duration-300 min-h-[250px] resize-none font-sans"
             />
           </div>
         </div>
