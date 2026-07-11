@@ -17,7 +17,7 @@ export const Navbar: React.FC = () => {
           <img 
             src={logoImg} 
             alt="NexJob Logo" 
-            className="h-8 w-auto object-contain transition-transform duration-300 group-hover:scale-105" 
+            className="h-8 w-8 rounded-full object-cover ring-2 ring-brand-primary/25 border border-brand-primary/30 transition-transform duration-300 group-hover:scale-105 group-hover:ring-brand-primary/45" 
           />
           <span className="font-display">
             Nex<span className="text-brand-primary">Job</span>
