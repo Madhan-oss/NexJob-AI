@@ -5,10 +5,8 @@ import dotenv from 'dotenv';
 import { parseResumeText } from './src/parser.js';
 import { 
   parseResume, 
-  analyzeJobDescription, 
-  calculateMatchScore, 
-  tailorResume,
-  generateCoverLetter 
+  analyzeAndScore, 
+  tailorResumeAndCoverLetter
 } from './src/gemini.js';
 import { generateDocx } from './src/exporter.js';
 import { saveResume, saveJobDescription, saveTailoredResult } from './src/db.js';
@@ -96,70 +94,53 @@ app.post('/api/parse-resume', upload.single('resume'), async (req, res) => {
 });
 
 /**
- * 2. Analyze JD Endpoint
- * Extracts required keywords and metadata from the job description.
+ * 2. Combined JD Analysis & Match Scoring Endpoint
+ * Extracts required keywords and metadata, calculates match score in one call.
  */
-app.post('/api/analyze-jd', async (req, res) => {
-  const { jdText } = req.body;
-  if (!jdText || jdText.trim() === '') {
-    return res.status(400).json({ error: 'Job description text is required.' });
+app.post('/api/analyze-and-score', async (req, res) => {
+  const { parsedResume, jdText } = req.body;
+  if (!parsedResume || !jdText || jdText.trim() === '') {
+    return res.status(400).json({ error: 'Both parsed resume and job description text are required.' });
   }
 
   try {
-    console.log('Analyzing job description...');
-    const analysis = await analyzeJobDescription(jdText);
+    console.log('Analyzing job description and calculating match score...');
+    const result = await analyzeAndScore(parsedResume, jdText);
     
     // Save to Supabase if configured
     const jdId = await saveJobDescription(
-      analysis.title,
-      analysis.company,
+      result.jdAnalysis.title,
+      result.jdAnalysis.company,
       jdText,
-      { required: analysis.requiredSkills, preferred: analysis.preferredSkills }
+      { required: result.jdAnalysis.requiredSkills, preferred: result.jdAnalysis.preferredSkills }
     );
     
     res.json({
-      ...analysis,
-      jdId: jdId
+      jdAnalysis: {
+        ...result.jdAnalysis,
+        jdId: jdId
+      },
+      matchScore: result.matchScore
     });
   } catch (error) {
-    console.error('Error in /api/analyze-jd:', error);
+    console.error('Error in /api/analyze-and-score:', error);
     res.status(500).json({ error: formatGeminiError(error) });
   }
 });
 
 /**
- * 3. Match Score Endpoint
- * Rates candidate resume match with job description requirements.
+ * 3. Combined Resume Tailoring & Cover Letter Endpoint
+ * Rewrites experiences, summary, suggests projects, and creates cover letter.
  */
-app.post('/api/match-score', async (req, res) => {
-  const { parsedResume, jdAnalysis } = req.body;
-  if (!parsedResume || !jdAnalysis) {
-    return res.status(400).json({ error: 'Both parsed resume and job description analysis are required.' });
-  }
-
-  try {
-    console.log('Calculating match score...');
-    const result = await calculateMatchScore(parsedResume, jdAnalysis);
-    res.json(result);
-  } catch (error) {
-    console.error('Error in /api/match-score:', error);
-    res.status(500).json({ error: formatGeminiError(error) });
-  }
-});
-
-/**
- * 4. Generate Tailored Resume Endpoint
- * Rewrites resume summary, experiences, and suggests tailored projects.
- */
-app.post('/api/generate-resume', async (req, res) => {
+app.post('/api/tailor-resume-and-cl', async (req, res) => {
   const { parsedResume, jdAnalysis, tone, resumeId, jdId, scoreBefore } = req.body;
   if (!parsedResume || !jdAnalysis) {
     return res.status(400).json({ error: 'Both parsed resume and job description analysis are required.' });
   }
 
   try {
-    console.log(`Tailoring resume with tone: ${tone || 'balanced'}...`);
-    const tailoredResult = await tailorResume(parsedResume, jdAnalysis, tone);
+    console.log(`Tailoring resume & generating cover letter with tone: ${tone || 'balanced'}...`);
+    const result = await tailorResumeAndCoverLetter(parsedResume, jdAnalysis, tone);
     
     // Save to Supabase if configured & IDs are present
     let tailoredId = null;
@@ -167,42 +148,26 @@ app.post('/api/generate-resume', async (req, res) => {
       tailoredId = await saveTailoredResult(
         resumeId,
         jdId,
-        tailoredResult,
-        tailoredResult.suggestedProjects || [],
+        result.tailoredResume,
+        result.tailoredResume.suggestedProjects || [],
         scoreBefore || null,
-        tailoredResult.matchScoreAfter
+        result.tailoredResume.matchScoreAfter
       );
     }
     
     res.json({
-      ...tailoredResult,
-      tailoredId
+      tailoredResume: {
+        ...result.tailoredResume,
+        tailoredId
+      },
+      coverLetter: result.coverLetter
     });
   } catch (error) {
-    console.error('Error in /api/generate-resume:', error);
+    console.error('Error in /api/tailor-resume-and-cl:', error);
     res.status(500).json({ error: formatGeminiError(error) });
   }
 });
 
-/**
- * 5. Cover Letter Endpoint
- * Generates tailored cover letter based on resume and JD.
- */
-app.post('/api/cover-letter', async (req, res) => {
-  const { parsedResume, jdAnalysis } = req.body;
-  if (!parsedResume || !jdAnalysis) {
-    return res.status(400).json({ error: 'Both parsed resume and job description analysis are required.' });
-  }
-
-  try {
-    console.log('Generating cover letter...');
-    const coverLetter = await generateCoverLetter(parsedResume, jdAnalysis);
-    res.json(coverLetter);
-  } catch (error) {
-    console.error('Error in /api/cover-letter:', error);
-    res.status(500).json({ error: formatGeminiError(error) });
-  }
-});
 
 /**
  * 6. Export Endpoint

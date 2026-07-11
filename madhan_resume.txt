@@ -1,0 +1,59 @@
+B MADHANKUMAR
+mb0270@srmist.edu.in | 6369373742 | 2027
+B.Tech, Computer Science and Engineering - Artificial Intelligence and Machine Learning
+Address: 18 kellla kallukara street, Palakari-1
+
+EDUCATION
+SRM IST-Trichy - 2027
+B.Tech, Computer Science and Engineering - Artificial Intelligence and Machine Learning
+CGPA: 8.18/10
+
+Samadh Senior Secondary School - 2023
+Class XII - CBSE, Kaja Nagar, Tiruchirappalli, Tamil Nadu
+Percentage: 70%
+
+Samadh Senior Secondary School - 2021
+Class X - CBSE, Kaja Nagar, Tiruchirappalli, Tamil Nadu
+Percentage: 75%
+
+SKILLS
+Programming Languages: Python, C, C++, JAVA
+Languages and Frameworks: HTML, CSS, JS, Bootstrap, React, Node.js
+Technical Skills: Fine-tuning, Deep Learning, Machine Learning, Genetic / Optimization Algorithms, Natural Language Processing (NLP)
+Tools and Technologies: MySQL, Linux, REST API, Cloud, Docker
+
+EXPERIENCE
+NIT Tiruchirappalli | Jun 2025 - Jul 2025
+Summer Intern - AI/ML Intern
+- Worked as AI/ML intern under the mentorship of NIT faculty and CS Department.
+- Developed machine learning applications and algorithms.
+
+VRDella | Jul 2025 - Aug 2025
+Digital Marketing & Technical SEO Specialist Intern
+- Worked as an SEO Executive / Specialist responsible for improving website visibility.
+- Increased organic traffic from search engines using Google Analytics and Search Console.
+
+CONFERENCES & WORKSHOPS
+AWS Academy Workshop - Generative AI Foundations | Oct 2025
+- Completed 12-hour program on core principles of generative AI and modern AI workflows.
+- Built understanding of foundation models, prompt engineering, and evaluation.
+- Explored cloud infrastructure supporting scaling of AI-powered applications.
+
+PROJECTS
+SmartMed VoiceBot: Automated Primary Health Guidance | Sep 2025 - Nov 2025
+- Tech Stack: Python, Whisper, LLM/GPT, gTTS, PortAudio, PyAudio
+- Captures patient speech, converts audio to text, and generates medical guidance.
+- Transforms response to spoken voice in real-time.
+
+AI Assistant that Turns Shared Links into Smart Reminders | Jul 2025 - Aug 2025
+- Tech Stack: Flutter, Python, FastAPI, Firebase, PostgreSQL, spaCy, Hugging Face
+- Extracts dates, eligibility, and fees from shared links (YouTube, Instagram, blogs).
+- Automatically schedules smart reminders.
+
+Generative Design for Aerodynamic Wind Turbine Blades | Jan 2026 - Present
+- Tech Stack: XFOIL, Python, DEAP
+- Designed AI-driven optimization workflow to generate high-performance blade profiles.
+- Evolved camber, thickness, twist, and chord using genetic algorithms.
+
+LANGUAGES
+English (Professional Working Proficiency), Tamil (Native Proficiency), Telugu (Limited Working Proficiency)

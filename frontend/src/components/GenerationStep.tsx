@@ -81,8 +81,8 @@ export const GenerationStep: React.FC = () => {
     const loadingTimer = simulateLoading();
 
     try {
-      // 1. Generate Tailored Resume
-      const resumeResponse = await fetch('/api/generate-resume', {
+      // Combined call to tailor resume & draft cover letter
+      const response = await fetch('/api/tailor-resume-and-cl', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -95,32 +95,20 @@ export const GenerationStep: React.FC = () => {
         }),
       });
 
-      if (!resumeResponse.ok) {
-        const errData = await resumeResponse.json();
-        throw new Error(errData.error || 'Failed to tailor resume.');
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Failed to tailor resume & generate cover letter.');
       }
 
-      const tailoredData = await resumeResponse.json();
+      const data = await response.json();
       
       // Save results
-      setTailoredResume(tailoredData, tailoredData.tailoredId);
-      if (tailoredData.suggestedProjects) {
-        setSuggestedProjects(tailoredData.suggestedProjects);
+      setTailoredResume(data.tailoredResume, data.tailoredResume.tailoredId);
+      if (data.tailoredResume.suggestedProjects) {
+        setSuggestedProjects(data.tailoredResume.suggestedProjects);
       }
-
-      // 2. Draft Cover Letter as background utility (stretch goal)
-      try {
-        const clResponse = await fetch('/api/cover-letter', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parsedResume, jdAnalysis }),
-        });
-        if (clResponse.ok) {
-          const clData = await clResponse.json();
-          setCoverLetter(clData);
-        }
-      } catch (clErr) {
-        console.warn('Cover letter draft generation failed in background:', clErr);
+      if (data.coverLetter) {
+        setCoverLetter(data.coverLetter);
       }
 
       setLoadingProgress(100);

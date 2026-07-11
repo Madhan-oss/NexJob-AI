@@ -1,0 +1,21 @@
+John Doe
+john.doe@email.com | +1-555-0199 | Austin, TX | linkedin.com/in/johndoe
+
+PROFESSIONAL SUMMARY
+Experienced Frontend Developer with 3+ years of expertise building interactive web applications using React, Javascript, and CSS. Dedicated to optimizing application speed and designing responsive layouts.
+
+EXPERIENCE
+Software Engineer | Tech Solutions Inc. | Jan 2024 - Present | Austin, TX
+- Developed user interfaces using React and state management libraries.
+- Collaborated with design teams to translate wireframes into high-quality code.
+- Optimized web applications for maximum speed and scalability.
+
+Junior Developer | Web Builders Corp | Jun 2023 - Dec 2023 | Dallas, TX
+- Built landing pages using HTML, CSS, and Bootstrap.
+- Assisted in debugging and testing frontend features.
+
+EDUCATION
+Bachelor of Science in Computer Science | University of Texas | Graduated May 2023
+
+SKILLS
+React, JavaScript, HTML5, CSS3, Git, REST APIs, Bootstrap

@@ -123,9 +123,10 @@ export async function parseResume(rawText) {
 }
 
 /**
- * Extracts requirements and keywords from a job description.
+ * 1. Combined JD Analysis & Match Scoring
+ * Extracts JD requirements and calculates current match score in one API call.
  */
-export async function analyzeJobDescription(jdText) {
+export async function analyzeAndScore(parsedResume, jdText) {
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.0-flash',
     generationConfig: {
@@ -134,51 +135,13 @@ export async function analyzeJobDescription(jdText) {
   });
 
   const prompt = `
-    You are an ATS (Applicant Tracking System) optimizer and professional recruiter. Analyze the following Job Description (JD) and extract keywords, technologies, skills, and roles.
-    
-    The JSON structure MUST follow this format:
-    {
-      "title": "Job Title / Role",
-      "company": "Company Name (use 'Unknown' if not mentioned)",
-      "requiredSkills": ["Essential Skill 1", "Essential Skill 2", "Essential Technology 1", ...],
-      "preferredSkills": ["Nice-to-have Skill 1", "Nice-to-have Technology 1", ...],
-      "responsibilities": ["Core responsibility 1", "Core responsibility 2", ...],
-      "experienceLevel": "Entry-level, Mid-level, Senior, Lead, or Executive"
-    }
+    You are an expert recruitment AI and ATS auditor. You have two tasks:
+    1. Analyze the Job Description (JD) to extract keywords, skills, responsibilities, and job details.
+    2. Rate the alignment of the candidate's parsed resume against these requirements.
 
-    Extract keywords precisely. Make sure to capture technical stacks (languages, frameworks, databases, tools) and methodologies.
-
-    Job Description:
-    ${jdText}
-  `;
-
-  try {
-    const result = await generateContentWithRetry(model, prompt);
-    const text = result.response.text();
-    return cleanJsonResponse(text);
-  } catch (error) {
-    console.error('Error in Gemini analyzeJobDescription:', error);
-    throw new Error(`Gemini JD analysis failed: ${error.message}`);
-  }
-}
-
-/**
- * Calculates a match score between a parsed resume and a JD analysis.
- */
-export async function calculateMatchScore(parsedResume, jdAnalysis) {
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    generationConfig: {
-      responseMimeType: 'application/json',
-    },
-  });
-
-  const prompt = `
-    You are an ATS algorithm auditor. Rate the alignment of the user's resume against the Job Description (JD) requirements.
-    
     Inputs:
-    1. User's Resume (JSON): ${JSON.stringify(parsedResume)}
-    2. Job Description Analysis (JSON): ${JSON.stringify(jdAnalysis)}
+    - Candidate's Resume (JSON): ${JSON.stringify(parsedResume)}
+    - Job Description Text: ${jdText}
 
     Analyze the technical skills, tools, experience bullet points, and responsibilities. Calculate a match score from 0 to 100.
     - 0-40: Poor fit, major gaps in required skills and experience.
@@ -186,13 +149,23 @@ export async function calculateMatchScore(parsedResume, jdAnalysis) {
     - 71-90: Strong fit, matches most required skills and experience.
     - 91-100: Exceptional fit, matches almost all required and preferred items.
 
-    Return a JSON object exactly matching this format:
+    Return a single JSON object conforming exactly to this structure:
     {
-      "score": 75, // Integer match score
-      "matchedKeywords": ["React", "TypeScript", ...], // Skills and tools present in both
-      "missingKeywords": ["AWS", "Kubernetes", ...], // Skills and tools mentioned in requiredSkills or preferredSkills but missing from the resume
-      "strengths": ["3+ years experience as a React Developer", "Strong experience in frontend testing"], // Bulleted strings explaining strengths
-      "gaps": ["Lacks experience with cloud deployments", "No mention of GraphQL which is required"] // Bulleted strings explaining gaps
+      "jdAnalysis": {
+        "title": "Job Title / Role",
+        "company": "Company Name (use 'Unknown' if not mentioned)",
+        "requiredSkills": ["Essential Skill 1", "Essential Skill 2", "Essential Technology 1", ...],
+        "preferredSkills": ["Nice-to-have Skill 1", "Nice-to-have Technology 1", ...],
+        "responsibilities": ["Core responsibility 1", "Core responsibility 2", ...],
+        "experienceLevel": "Entry-level, Mid-level, Senior, Lead, or Executive"
+      },
+      "matchScore": {
+        "score": 75, // Integer match score
+        "matchedKeywords": ["React", "TypeScript", ...], // Skills and tools present in both
+        "missingKeywords": ["AWS", "Kubernetes", ...], // Skills and tools mentioned in requiredSkills or preferredSkills but missing from the resume
+        "strengths": ["3+ years experience as a React Developer", "Strong experience in frontend testing"], // Bulleted strings explaining strengths
+        "gaps": ["Lacks experience with cloud deployments", "No mention of GraphQL which is required"] // Bulleted strings explaining gaps
+      }
     }
   `;
 
@@ -201,29 +174,28 @@ export async function calculateMatchScore(parsedResume, jdAnalysis) {
     const text = result.response.text();
     return cleanJsonResponse(text);
   } catch (error) {
-    console.error('Error in Gemini calculateMatchScore:', error);
-    throw new Error(`Gemini match score calculation failed: ${error.message}`);
+    console.error('Error in Gemini analyzeAndScore:', error);
+    throw new Error(`Gemini analysis & scoring failed: ${error.message}`);
   }
 }
 
 /**
- * Tailors a resume to align with a job description.
- * Rewrites summary and experience bullet points to integrate keywords.
- * Suggests 2-3 tailored project ideas.
+ * 2. Combined Resume Tailoring & Cover Letter Generation
+ * Rewrites resume summary/bullet points, suggests projects, and drafts cover letter in one API call.
  */
-export async function tailorResume(parsedResume, jdAnalysis, tone = 'balanced') {
+export async function tailorResumeAndCoverLetter(parsedResume, jdAnalysis, tone = 'balanced') {
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash', // Using flash for resume tailoring
+    model: 'gemini-2.0-flash',
     generationConfig: {
       responseMimeType: 'application/json',
     },
   });
 
   const prompt = `
-    You are an elite career coach and ATS optimization expert. Your task is to tailor a user's resume for a specific job description.
-    
+    You are an elite career coach and ATS optimization expert. Your task is to tailor a candidate's resume and draft a matching cover letter for a target job description.
+
     CRITICAL CONSTRAINT: Do NOT fabricate or invent any experience, employers, schools, degrees, titles, or dates. Only rephrase, reword, and reorder existing bullet points to align with the keywords and responsibilities in the job description. Any claims in the tailored bullets must be based *strictly* on facts in the original resume. If a skill isn't mentioned in the original resume, do NOT claim proficiency, but you may truthfully rephrase experiences that used similar tools or concepts.
-    
+
     Tone requirement: ${tone} (Options: 'concise', 'detailed', 'executive', 'balanced')
     - Concise: punchy, action-oriented, brief.
     - Detailed: metrics-focused, context-rich.
@@ -234,64 +206,50 @@ export async function tailorResume(parsedResume, jdAnalysis, tone = 'balanced') 
     1. Parsed Resume: ${JSON.stringify(parsedResume)}
     2. Job Description Analysis: ${JSON.stringify(jdAnalysis)}
 
-    Instructions for generation:
-    1. **Summary**: Rewrite the resume summary to highlight relevant experience matching the job. Keep it to 3-4 lines. Include a "summaryExplanation" detailing why you rewrote it.
-    2. **Experience Bullet Points**: 
-       For each experience entry, you must rewrite the bullet points in the "description".
-       For each bullet point, return an object:
-       {
-         "originalText": "The original bullet point",
-         "tailoredText": "The rewritten bullet point incorporating relevant JD keywords and active verbs",
-         "explanation": "Brief explanation of why this change was made (e.g. 'Highlighted React and Tailwind to match the frontend stack')",
-         "isModified": true // Set to true if modified, false if left identical
-       }
-       If a bullet point does not need changing or cannot be tailored factually, keep it identical and set isModified to false.
-    3. **Skills**: Reorder the skills array to prioritize skills and tools required by the JD. Add skills only if they were implied or minor in the original resume, but prioritize truthfulness.
-    4. **Suggested Projects**: Create 2 to 3 new "Projects" entries that would be highly relevant to this job description's stack/domain. These will serve as suggestions for the user to implement or adapt based on their side work.
-       Each suggested project must look like:
-       {
-         "title": "Project Title",
-         "description": "Details of what the project does, key achievements, and features. Use bullet style or action sentences.",
-         "techStack": ["React", "Node.js", ...],
-         "relevanceReason": "Why this specific project helps demonstrate competency for the job"
-       }
-       Mark these clearly as suggestions.
-    5. **Match Score After**: Predict the new ATS match score (0-100) if the user adopts these tailored points and suggested projects.
-
-    The response MUST be a JSON object conforming exactly to this structure:
+    Return a single JSON object conforming exactly to this structure:
     {
-      "summary": "Tailored summary statement",
-      "summaryExplanation": "Explanation of changes in summary",
-      "experience": [
-        {
-          "company": "Company Name",
-          "role": "Role Name",
-          "startDate": "Start Date",
-          "endDate": "End Date",
-          "location": "Location",
-          "description": [
-            {
-              "originalText": "Original bullet 1",
-              "tailoredText": "Tailored bullet 1",
-              "explanation": "Explanation 1",
-              "isModified": true
-            },
-            ...
-          ]
-        },
-        ...
-      ],
-      "skills": ["Tailored", "Skill", "List", ...],
-      "suggestedProjects": [
-        {
-          "title": "Suggested Project 1",
-          "description": "Suggested description 1",
-          "techStack": ["Tech1", "Tech2"],
-          "relevanceReason": "Relevance reason 1"
-        },
-        ...
-      ],
-      "matchScoreAfter": 88
+      "tailoredResume": {
+        "summary": "Tailored summary statement (3-4 lines)",
+        "summaryExplanation": "Explanation of changes made in the summary",
+        "experience": [
+          {
+            "company": "Company Name",
+            "role": "Role Name",
+            "startDate": "Start Date",
+            "endDate": "End Date",
+            "location": "Location",
+            "description": [
+              {
+                "originalText": "Original bullet text",
+                "tailoredText": "Tailored bullet text incorporating relevant JD keywords and active verbs",
+                "explanation": "Why this tailored version matches the JD",
+                "isModified": true
+              }
+            ]
+          }
+        ],
+        "skills": ["Reordered", "Skill", "List"],
+        "suggestedProjects": [
+          {
+            "title": "Suggested Project 1",
+            "description": "Details of what the project does, key achievements, and features. Use bullet style or action sentences.",
+            "techStack": ["React", "Node.js", ...],
+            "relevanceReason": "Why this specific project helps demonstrate competency for the job"
+          }
+        ],
+        "matchScoreAfter": 88
+      },
+      "coverLetter": {
+        "subject": "Application for [Job Title] - [Candidate Name]",
+        "salutation": "Dear Hiring Team at [Company Name],",
+        "paragraphs": [
+          "Opening paragraph expressing enthusiasm for the [Job Title] role and explaining how the candidate's background matches.",
+          "Second paragraph highlighting key matching experiences and skills (e.g. experience with specific stacks or responsibilities).",
+          "Third paragraph connecting candidate strengths to the specific company's goals and demonstrating domain understanding.",
+          "Closing paragraph stating availability for interview, contact details, and thank you."
+        ],
+        "signoff": "Sincerely,\\n\\n[Candidate Name]"
+      }
     }
   `;
 
@@ -300,52 +258,9 @@ export async function tailorResume(parsedResume, jdAnalysis, tone = 'balanced') 
     const text = result.response.text();
     return cleanJsonResponse(text);
   } catch (error) {
-    console.error('Error in Gemini tailorResume:', error);
-    throw new Error(`Gemini resume tailoring failed: ${error.message}`);
+    console.error('Error in Gemini tailorResumeAndCoverLetter:', error);
+    throw new Error(`Gemini resume tailoring & cover letter generation failed: ${error.message}`);
   }
 }
 
-/**
- * Generates a tailored cover letter draft based on the resume and JD.
- */
-export async function generateCoverLetter(parsedResume, jdAnalysis) {
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    generationConfig: {
-      responseMimeType: 'application/json',
-    },
-  });
-
-  const prompt = `
-    You are an expert career coach. Write a tailored, professional, and compelling cover letter for the candidate based on their resume and the target job description.
-    
-    CRITICAL CONSTRAINT: Do NOT fabricate achievements, roles, or skills. Work only with facts from the resume.
-
-    Inputs:
-    1. Resume: ${JSON.stringify(parsedResume)}
-    2. Job Description: ${JSON.stringify(jdAnalysis)}
-
-    Return a JSON object exactly matching this format:
-    {
-      "subject": "Application for [Job Title] - [Candidate Name]",
-      "salutation": "Dear Hiring Team at [Company Name],",
-      "paragraphs": [
-        "Opening paragraph expressing enthusiasm for the [Job Title] role and explaining how the candidate's background matches.",
-        "Second paragraph highlighting key matching experiences and skills (e.g. experience with specific stacks or responsibilities).",
-        "Third paragraph connecting candidate strengths to the specific company's goals and demonstrating domain understanding.",
-        "Closing paragraph stating availability for interview, contact details, and thank you."
-      ],
-      "signoff": "Sincerely,\\n\\n[Candidate Name]"
-    }
-  `;
-
-  try {
-    const result = await generateContentWithRetry(model, prompt);
-    const text = result.response.text();
-    return cleanJsonResponse(text);
-  } catch (error) {
-    console.error('Error in Gemini generateCoverLetter:', error);
-    throw new Error(`Gemini cover letter generation failed: ${error.message}`);
-  }
-}
 

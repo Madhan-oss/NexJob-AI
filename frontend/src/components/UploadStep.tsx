@@ -110,38 +110,24 @@ export const UploadStep: React.FC = () => {
     setError(null);
 
     try {
-      // 1. Analyze Job Description
-      const jdResponse = await fetch('/api/analyze-jd', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jdText }),
-      });
-
-      if (!jdResponse.ok) {
-        const errData = await jdResponse.json();
-        throw new Error(errData.error || 'Failed to analyze Job Description.');
-      }
-
-      const jdAnalysisData = await jdResponse.json();
-      setJdAnalysis(jdAnalysisData, jdAnalysisData.jdId);
-
-      // We need to fetch the current parsedResume from store
+      // Fetch current parsedResume from store
       const { parsedResume } = useStore.getState();
 
-      // 2. Calculate initial match score
-      const matchResponse = await fetch('/api/match-score', {
+      // Combined single call to analyze JD and compute match score
+      const response = await fetch('/api/analyze-and-score', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parsedResume, jdAnalysis: jdAnalysisData }),
+        body: JSON.stringify({ parsedResume, jdText }),
       });
 
-      if (!matchResponse.ok) {
-        const errData = await matchResponse.json();
-        throw new Error(errData.error || 'Failed to compute resume match score.');
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Failed to analyze Job Description and calculate score.');
       }
 
-      const matchData = await matchResponse.json();
-      setMatchScoreBefore(matchData);
+      const data = await response.json();
+      setJdAnalysis(data.jdAnalysis, data.jdAnalysis.jdId);
+      setMatchScoreBefore(data.matchScore);
 
       // Move to analysis dashboard
       setStep(2);
