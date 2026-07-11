@@ -18,7 +18,7 @@ export const Footer: React.FC = () => {
           <span className="cursor-pointer hover:underline">Terms of Service</span>
         </div>
         <p className="mt-4 text-[10px] text-text-muted/60">
-          Powered by Gemini 2.5 Flash & Pro Models. &copy; {new Date().getFullYear()} NexJob. All rights reserved.
+          Powered by Gemini 2.0 Flash Model. &copy; {new Date().getFullYear()} NexJob. All rights reserved.
         </p>
       </div>
     </footer>
