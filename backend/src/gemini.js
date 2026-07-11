@@ -22,6 +22,33 @@ function cleanJsonResponse(text) {
 }
 
 /**
+ * Helper to call model.generateContent with exponential backoff retry on 429 errors.
+ */
+async function generateContentWithRetry(model, prompt, retries = 3, delayMs = 3000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const result = await model.generateContent(prompt);
+      return result;
+    } catch (error) {
+      const isRateLimit = error.message && (
+        error.message.includes('429') || 
+        error.message.toLowerCase().includes('quota') || 
+        error.message.toLowerCase().includes('rate limit') || 
+        error.message.toLowerCase().includes('too many requests')
+      );
+      if (isRateLimit && i < retries - 1) {
+        const waitTime = delayMs * Math.pow(2, i); // 3s, 6s, 12s...
+        console.warn(`Gemini 429 Rate Limit hit. Retrying in ${waitTime}ms (Attempt ${i + 1}/${retries})...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
+
+/**
  * Parses raw resume text into structured JSON.
  */
 export async function parseResume(rawText) {
@@ -86,7 +113,7 @@ export async function parseResume(rawText) {
   `;
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await generateContentWithRetry(model, prompt);
     const text = result.response.text();
     return cleanJsonResponse(text);
   } catch (error) {
@@ -126,7 +153,7 @@ export async function analyzeJobDescription(jdText) {
   `;
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await generateContentWithRetry(model, prompt);
     const text = result.response.text();
     return cleanJsonResponse(text);
   } catch (error) {
@@ -170,7 +197,7 @@ export async function calculateMatchScore(parsedResume, jdAnalysis) {
   `;
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await generateContentWithRetry(model, prompt);
     const text = result.response.text();
     return cleanJsonResponse(text);
   } catch (error) {
@@ -269,7 +296,7 @@ export async function tailorResume(parsedResume, jdAnalysis, tone = 'balanced') 
   `;
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await generateContentWithRetry(model, prompt);
     const text = result.response.text();
     return cleanJsonResponse(text);
   } catch (error) {
@@ -313,7 +340,7 @@ export async function generateCoverLetter(parsedResume, jdAnalysis) {
   `;
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await generateContentWithRetry(model, prompt);
     const text = result.response.text();
     return cleanJsonResponse(text);
   } catch (error) {

@@ -15,6 +15,16 @@ import { saveResume, saveJobDescription, saveTailoredResult } from './src/db.js'
 
 dotenv.config();
 
+// Helper to format Gemini API errors into user-friendly messages (especially rate limit 429 warnings)
+function formatGeminiError(err) {
+  const msg = err.message || '';
+  if (msg.includes('429') || msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('too many requests')) {
+    return 'NexJob AI is currently experiencing high traffic. Please wait 10-15 seconds and click "Analyze Resume & Job" again.';
+  }
+  return msg || 'An unexpected error occurred while communicating with Gemini AI.';
+}
+
+
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -81,7 +91,7 @@ app.post('/api/parse-resume', upload.single('resume'), async (req, res) => {
     });
   } catch (error) {
     console.error('Error in /api/parse-resume:', error);
-    res.status(500).json({ error: error.message || 'Failed to parse resume.' });
+    res.status(500).json({ error: formatGeminiError(error) });
   }
 });
 
@@ -113,7 +123,7 @@ app.post('/api/analyze-jd', async (req, res) => {
     });
   } catch (error) {
     console.error('Error in /api/analyze-jd:', error);
-    res.status(500).json({ error: error.message || 'Failed to analyze job description.' });
+    res.status(500).json({ error: formatGeminiError(error) });
   }
 });
 
@@ -133,7 +143,7 @@ app.post('/api/match-score', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error in /api/match-score:', error);
-    res.status(500).json({ error: error.message || 'Failed to calculate match score.' });
+    res.status(500).json({ error: formatGeminiError(error) });
   }
 });
 
@@ -170,7 +180,7 @@ app.post('/api/generate-resume', async (req, res) => {
     });
   } catch (error) {
     console.error('Error in /api/generate-resume:', error);
-    res.status(500).json({ error: error.message || 'Failed to generate tailored resume.' });
+    res.status(500).json({ error: formatGeminiError(error) });
   }
 });
 
@@ -190,7 +200,7 @@ app.post('/api/cover-letter', async (req, res) => {
     res.json(coverLetter);
   } catch (error) {
     console.error('Error in /api/cover-letter:', error);
-    res.status(500).json({ error: error.message || 'Failed to generate cover letter.' });
+    res.status(500).json({ error: formatGeminiError(error) });
   }
 });
 
