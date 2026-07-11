@@ -10,7 +10,60 @@ if (!apiKey) {
 
 const genAI = new GoogleGenerativeAI(apiKey);
 
-// Helper to clean response text (sometimes Gemini adds markdown codeblocks even if responseMimeType is set)
+/**
+ * Universal router that calls Groq (using LLaMA-3.3-70b-specdec) if a Groq key is set,
+ * or falls back to Gemini 2.0 Flash. This solves Free Tier rate limits.
+ */
+async function callLLM(prompt, responseMimeType = 'application/json') {
+  const groqApiKey = process.env.GROQ_API_KEY;
+  
+  if (groqApiKey) {
+    console.log('Routing request to Groq LLM Engine...');
+    try {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${groqApiKey}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-specdec',
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          response_format: responseMimeType === 'application/json' ? { type: 'json_object' } : undefined,
+          temperature: 0.1
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Groq API error (${response.status}): ${errorText}`);
+      }
+
+      const data = await response.json();
+      return data.choices[0].message.content;
+    } catch (err) {
+      console.warn('Groq LLM Engine failed, falling back to Gemini...', err);
+    }
+  }
+
+  console.log('Routing request to Gemini LLM Engine...');
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash',
+    generationConfig: responseMimeType === 'application/json' ? {
+      responseMimeType: 'application/json',
+    } : undefined,
+  });
+
+  const result = await generateContentWithRetry(model, prompt);
+  return result.response.text();
+}
+
+// Helper to clean response text (sometimes LLMs add markdown codeblocks even if responseMimeType is set)
 function cleanJsonResponse(text) {
   let cleaned = text.trim();
   if (cleaned.startsWith('```json')) {
@@ -47,18 +100,10 @@ async function generateContentWithRetry(model, prompt, retries = 3, delayMs = 30
   }
 }
 
-
 /**
  * Parses raw resume text into structured JSON.
  */
 export async function parseResume(rawText) {
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    generationConfig: {
-      responseMimeType: 'application/json',
-    },
-  });
-
   const prompt = `
     You are an expert resume parsing AI. Parse the following raw resume text into a structured JSON object.
     
@@ -113,12 +158,11 @@ export async function parseResume(rawText) {
   `;
 
   try {
-    const result = await generateContentWithRetry(model, prompt);
-    const text = result.response.text();
+    const text = await callLLM(prompt);
     return cleanJsonResponse(text);
   } catch (error) {
-    console.error('Error in Gemini parseResume:', error);
-    throw new Error(`Gemini parsing failed: ${error.message}`);
+    console.error('Error in parseResume:', error);
+    throw new Error(`Parsing failed: ${error.message}`);
   }
 }
 
@@ -127,13 +171,6 @@ export async function parseResume(rawText) {
  * Extracts JD requirements and calculates current match score in one API call.
  */
 export async function analyzeAndScore(parsedResume, jdText) {
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    generationConfig: {
-      responseMimeType: 'application/json',
-    },
-  });
-
   const prompt = `
     You are an expert recruitment AI and ATS auditor. You have two tasks:
     1. Analyze the Job Description (JD) to extract keywords, skills, responsibilities, and job details.
@@ -170,12 +207,11 @@ export async function analyzeAndScore(parsedResume, jdText) {
   `;
 
   try {
-    const result = await generateContentWithRetry(model, prompt);
-    const text = result.response.text();
+    const text = await callLLM(prompt);
     return cleanJsonResponse(text);
   } catch (error) {
-    console.error('Error in Gemini analyzeAndScore:', error);
-    throw new Error(`Gemini analysis & scoring failed: ${error.message}`);
+    console.error('Error in analyzeAndScore:', error);
+    throw new Error(`Analysis & scoring failed: ${error.message}`);
   }
 }
 
@@ -184,13 +220,6 @@ export async function analyzeAndScore(parsedResume, jdText) {
  * Rewrites resume summary/bullet points, suggests projects, and drafts cover letter in one API call.
  */
 export async function tailorResumeAndCoverLetter(parsedResume, jdAnalysis, tone = 'balanced') {
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    generationConfig: {
-      responseMimeType: 'application/json',
-    },
-  });
-
   const prompt = `
     You are an elite career coach and ATS optimization expert. Your task is to tailor a candidate's resume and draft a matching cover letter for a target job description.
 
@@ -254,13 +283,13 @@ export async function tailorResumeAndCoverLetter(parsedResume, jdAnalysis, tone 
   `;
 
   try {
-    const result = await generateContentWithRetry(model, prompt);
-    const text = result.response.text();
+    const text = await callLLM(prompt);
     return cleanJsonResponse(text);
   } catch (error) {
-    console.error('Error in Gemini tailorResumeAndCoverLetter:', error);
-    throw new Error(`Gemini resume tailoring & cover letter generation failed: ${error.message}`);
+    console.error('Error in tailorResumeAndCoverLetter:', error);
+    throw new Error(`Resume tailoring & cover letter generation failed: ${error.message}`);
   }
 }
+
 
 
