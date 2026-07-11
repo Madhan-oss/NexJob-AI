@@ -1,6 +1,7 @@
 import React from 'react';
 import { useStore } from '../store/useStore';
 import { Sun, Moon, ShieldAlert, Sparkles } from 'lucide-react';
+import logoImg from '../assets/logo.png';
 
 export const Navbar: React.FC = () => {
   const { theme, toggleTheme, privacyMode, setPrivacyMode, reset } = useStore();
@@ -11,11 +12,13 @@ export const Navbar: React.FC = () => {
         {/* Logo */}
         <button 
           onClick={reset}
-          className="flex items-center gap-2 text-2xl font-black tracking-tight text-text-primary-light dark:text-text-primary-dark group"
+          className="flex items-center gap-2.5 text-2xl font-black tracking-tight text-text-primary-light dark:text-text-primary-dark group"
         >
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary text-white transition-transform duration-300 group-hover:scale-105">
-            NJ
-          </span>
+          <img 
+            src={logoImg} 
+            alt="NexJob Logo" 
+            className="h-8 w-auto object-contain transition-transform duration-300 group-hover:scale-105" 
+          />
           <span className="font-display">
             Nex<span className="text-brand-primary">Job</span>
           </span>
