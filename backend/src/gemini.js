@@ -50,7 +50,8 @@ async function callLLM(prompt, responseMimeType = 'application/json', forceGemin
       const data = await response.json();
       return data.choices[0].message.content;
     } catch (err) {
-      console.warn('Groq LLM Engine failed, falling back to Gemini...', err);
+      console.error('Groq LLM Engine failed:', err);
+      throw err;
     }
   }
 
