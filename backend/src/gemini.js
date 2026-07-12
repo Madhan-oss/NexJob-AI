@@ -196,43 +196,22 @@ JSON Schema format to follow:
  * Extracts JD requirements and calculates current match score in one API call.
  */
 export async function analyzeAndScore(parsedResume, jdText) {
-  const prompt = `
-    You are an expert recruitment AI and ATS auditor. You have two tasks:
-    1. Analyze the Job Description (JD) to extract keywords, skills, responsibilities, and job details.
-    2. Rate the alignment of the candidate's parsed resume against these requirements.
+  const systemPrompt = 'You are an ATS scoring AI. Analyze the job description and score the resume match. Respond ONLY with valid JSON matching the requested schema.';
 
-    Inputs:
-    - Candidate's Resume (JSON): ${JSON.stringify(parsedResume)}
-    - Job Description Text: ${jdText}
+  // Compact resume representation to minimize token usage
+  const compactResume = {
+    skills: parsedResume.skills || [],
+    experience: (parsedResume.experience || []).map(e => ({
+      role: e.role, company: e.company, description: e.description?.slice(0, 3) || []
+    })),
+    education: (parsedResume.education || []).map(e => ({ degree: e.degree, institution: e.institution })),
+    projects: (parsedResume.projects || []).map(p => ({ title: p.title, techStack: p.techStack }))
+  };
 
-    Analyze the technical skills, tools, experience bullet points, and responsibilities. Calculate a match score from 0 to 100.
-    - 0-40: Poor fit, major gaps in required skills and experience.
-    - 41-70: Moderate fit, has some skills but misses core stacks or experience depth.
-    - 71-90: Strong fit, matches most required skills and experience.
-    - 91-100: Exceptional fit, matches almost all required and preferred items.
-
-    Return a single JSON object conforming exactly to this structure:
-    {
-      "jdAnalysis": {
-        "title": "Job Title / Role",
-        "company": "Company Name (use 'Unknown' if not mentioned)",
-        "requiredSkills": ["Essential Skill 1", "Essential Skill 2", "Essential Technology 1", ...],
-        "preferredSkills": ["Nice-to-have Skill 1", "Nice-to-have Technology 1", ...],
-        "responsibilities": ["Core responsibility 1", "Core responsibility 2", ...],
-        "experienceLevel": "Entry-level, Mid-level, Senior, Lead, or Executive"
-      },
-      "matchScore": {
-        "score": 75, // Integer match score
-        "matchedKeywords": ["React", "TypeScript", ...], // Skills and tools present in both
-        "missingKeywords": ["AWS", "Kubernetes", ...], // Skills and tools mentioned in requiredSkills or preferredSkills but missing from the resume
-        "strengths": ["3+ years experience as a React Developer", "Strong experience in frontend testing"], // Bulleted strings explaining strengths
-        "gaps": ["Lacks experience with cloud deployments", "No mention of GraphQL which is required"] // Bulleted strings explaining gaps
-      }
-    }
-  `;
+  const prompt = `Job Description:\n${jdText}\n\nCandidate Resume Summary:\n${JSON.stringify(compactResume)}\n\nTask: Analyze the JD and score the resume match. Return this exact JSON:\n{"jdAnalysis":{"title":"","company":"","requiredSkills":[],"preferredSkills":[],"responsibilities":[],"experienceLevel":""},"matchScore":{"score":0,"matchedKeywords":[],"missingKeywords":[],"strengths":[],"gaps":[]}}`;
 
   try {
-    const text = await callLLM(prompt);
+    const text = await callLLM(prompt, 'application/json', false, systemPrompt);
     return cleanJsonResponse(text);
   } catch (error) {
     console.error('Error in analyzeAndScore:', error);
@@ -245,70 +224,12 @@ export async function analyzeAndScore(parsedResume, jdText) {
  * Rewrites resume summary/bullet points, suggests projects, and drafts cover letter in one API call.
  */
 export async function tailorResumeAndCoverLetter(parsedResume, jdAnalysis, tone = 'balanced') {
-  const prompt = `
-    You are an elite career coach and ATS optimization expert. Your task is to tailor a candidate's resume and draft a matching cover letter for a target job description.
+  const systemPrompt = `You are an elite career coach and ATS optimization expert. Tailor the resume and draft a cover letter. CRITICAL: Do NOT fabricate experience, employers, schools, degrees, titles, or dates. Only rephrase existing bullet points using JD keywords. Tone: ${tone}. Respond ONLY with valid JSON.`;
 
-    CRITICAL CONSTRAINT: Do NOT fabricate or invent any experience, employers, schools, degrees, titles, or dates. Only rephrase, reword, and reorder existing bullet points to align with the keywords and responsibilities in the job description. Any claims in the tailored bullets must be based *strictly* on facts in the original resume. If a skill isn't mentioned in the original resume, do NOT claim proficiency, but you may truthfully rephrase experiences that used similar tools or concepts.
-
-    Tone requirement: ${tone} (Options: 'concise', 'detailed', 'executive', 'balanced')
-    - Concise: punchy, action-oriented, brief.
-    - Detailed: metrics-focused, context-rich.
-    - Executive: strategic, leadership-oriented, business-impact focused.
-    - Balanced: standard professional style.
-
-    Inputs:
-    1. Parsed Resume: ${JSON.stringify(parsedResume)}
-    2. Job Description Analysis: ${JSON.stringify(jdAnalysis)}
-
-    Return a single JSON object conforming exactly to this structure:
-    {
-      "tailoredResume": {
-        "summary": "Tailored summary statement (3-4 lines)",
-        "summaryExplanation": "Explanation of changes made in the summary",
-        "experience": [
-          {
-            "company": "Company Name",
-            "role": "Role Name",
-            "startDate": "Start Date",
-            "endDate": "End Date",
-            "location": "Location",
-            "description": [
-              {
-                "originalText": "Original bullet text",
-                "tailoredText": "Tailored bullet text incorporating relevant JD keywords and active verbs",
-                "explanation": "Why this tailored version matches the JD",
-                "isModified": true
-              }
-            ]
-          }
-        ],
-        "skills": ["Reordered", "Skill", "List"],
-        "suggestedProjects": [
-          {
-            "title": "Suggested Project 1",
-            "description": "Details of what the project does, key achievements, and features. Use bullet style or action sentences.",
-            "techStack": ["React", "Node.js", ...],
-            "relevanceReason": "Why this specific project helps demonstrate competency for the job"
-          }
-        ],
-        "matchScoreAfter": 88
-      },
-      "coverLetter": {
-        "subject": "Application for [Job Title] - [Candidate Name]",
-        "salutation": "Dear Hiring Team at [Company Name],",
-        "paragraphs": [
-          "Opening paragraph expressing enthusiasm for the [Job Title] role and explaining how the candidate's background matches.",
-          "Second paragraph highlighting key matching experiences and skills (e.g. experience with specific stacks or responsibilities).",
-          "Third paragraph connecting candidate strengths to the specific company's goals and demonstrating domain understanding.",
-          "Closing paragraph stating availability for interview, contact details, and thank you."
-        ],
-        "signoff": "Sincerely,\\n\\n[Candidate Name]"
-      }
-    }
-  `;
+  const prompt = `Resume: ${JSON.stringify(parsedResume)}\n\nJD Analysis: ${JSON.stringify(jdAnalysis)}\n\nReturn this exact JSON schema:\n{"tailoredResume":{"summary":"","summaryExplanation":"","experience":[{"company":"","role":"","startDate":"","endDate":"","location":"","description":[{"originalText":"","tailoredText":"","explanation":"","isModified":true}]}],"skills":[],"suggestedProjects":[{"title":"","description":"","techStack":[],"relevanceReason":""}],"matchScoreAfter":0},"coverLetter":{"subject":"","salutation":"","paragraphs":["","","",""],"signoff":""}}`;
 
   try {
-    const text = await callLLM(prompt);
+    const text = await callLLM(prompt, 'application/json', false, systemPrompt);
     return cleanJsonResponse(text);
   } catch (error) {
     console.error('Error in tailorResumeAndCoverLetter:', error);
