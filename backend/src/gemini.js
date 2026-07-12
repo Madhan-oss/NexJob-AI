@@ -11,50 +11,68 @@ if (!apiKey) {
 const genAI = new GoogleGenerativeAI(apiKey);
 
 /**
- * Universal router that calls Groq (using LLaMA-3.3-70b-specdec) if a Groq key is set,
- * or falls back to Gemini 2.0 Flash. This solves Free Tier rate limits.
+ * Universal LLM router with 3-tier cascade:
+ * 1. llama-3.1-8b-instant (Groq) - 500k TPD, very fast
+ * 2. llama-3.3-70b-versatile (Groq) - 100k TPD, more powerful
+ * 3. gemini-2.0-flash - last resort fallback
  */
+async function callGroq(model, messages, responseMimeType, maxTokens = 4096) {
+  const groqApiKey = process.env.GROQ_API_KEY;
+  if (!groqApiKey) throw new Error('No GROQ_API_KEY set');
+
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${groqApiKey}`
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: messages,
+      response_format: responseMimeType === 'application/json' ? { type: 'json_object' } : undefined,
+      temperature: 0.1,
+      max_tokens: maxTokens
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Groq API error (${response.status}): ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
 async function callLLM(prompt, responseMimeType = 'application/json', forceGemini = false, systemPrompt = null) {
   const groqApiKey = process.env.GROQ_API_KEY;
-  
+
+  // Build messages array with optional system prompt
+  const messages = [];
+  if (systemPrompt) {
+    messages.push({ role: 'system', content: systemPrompt });
+  }
+  messages.push({ role: 'user', content: prompt });
+
   if (groqApiKey && !forceGemini) {
-    console.log('Routing request to Groq LLM Engine...');
+    // Tier 1: llama-3.1-8b-instant (500,000 TPD — much higher quota)
     try {
-      const messages = [];
-      if (systemPrompt) {
-        messages.push({ role: 'system', content: systemPrompt });
-      }
-      messages.push({ role: 'user', content: prompt });
+      console.log('Routing request to Groq [llama-3.1-8b-instant]...');
+      return await callGroq('llama-3.1-8b-instant', messages, responseMimeType, 4096);
+    } catch (err8b) {
+      console.warn('llama-3.1-8b-instant failed, trying llama-3.3-70b-versatile...', err8b.message);
+    }
 
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${groqApiKey}`
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: messages,
-          response_format: responseMimeType === 'application/json' ? { type: 'json_object' } : undefined,
-          temperature: 0.1,
-          max_tokens: 4096,
-          max_completion_tokens: 4096
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Groq API error (${response.status}): ${errorText}`);
-      }
-
-      const data = await response.json();
-      return data.choices[0].message.content;
-    } catch (err) {
-      console.error('Groq LLM Engine failed:', err);
-      throw err;
+    // Tier 2: llama-3.3-70b-versatile (100,000 TPD — more powerful)
+    try {
+      console.log('Routing request to Groq [llama-3.3-70b-versatile]...');
+      return await callGroq('llama-3.3-70b-versatile', messages, responseMimeType, 4096);
+    } catch (err70b) {
+      console.warn('llama-3.3-70b-versatile failed, falling back to Gemini...', err70b.message);
     }
   }
 
+  // Tier 3: Gemini 2.0 Flash (last resort)
   console.log('Routing request to Gemini LLM Engine...');
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.0-flash',
@@ -67,6 +85,7 @@ async function callLLM(prompt, responseMimeType = 'application/json', forceGemin
   const result = await generateContentWithRetry(model, prompt);
   return result.response.text();
 }
+
 
 // Helper to clean response text (sometimes LLMs add markdown codeblocks even if responseMimeType is set)
 function cleanJsonResponse(text) {

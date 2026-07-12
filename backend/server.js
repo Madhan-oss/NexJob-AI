@@ -89,12 +89,7 @@ app.post('/api/parse-resume', upload.single('resume'), async (req, res) => {
     });
   } catch (error) {
     console.error('Error in /api/parse-resume:', error);
-    // Temporarily expose raw error for diagnostics
-    res.status(500).json({ 
-      error: formatGeminiError(error),
-      debug_raw_error: error.message,
-      debug_stack: error.stack?.split('\n').slice(0, 5).join(' | ')
-    });
+    res.status(500).json({ error: formatGeminiError(error) });
   }
 });
 
