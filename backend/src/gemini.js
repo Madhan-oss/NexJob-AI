@@ -14,12 +14,18 @@ const genAI = new GoogleGenerativeAI(apiKey);
  * Universal router that calls Groq (using LLaMA-3.3-70b-specdec) if a Groq key is set,
  * or falls back to Gemini 2.0 Flash. This solves Free Tier rate limits.
  */
-async function callLLM(prompt, responseMimeType = 'application/json', forceGemini = false) {
+async function callLLM(prompt, responseMimeType = 'application/json', forceGemini = false, systemPrompt = null) {
   const groqApiKey = process.env.GROQ_API_KEY;
   
   if (groqApiKey && !forceGemini) {
     console.log('Routing request to Groq LLM Engine...');
     try {
+      const messages = [];
+      if (systemPrompt) {
+        messages.push({ role: 'system', content: systemPrompt });
+      }
+      messages.push({ role: 'user', content: prompt });
+
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -28,12 +34,7 @@ async function callLLM(prompt, responseMimeType = 'application/json', forceGemin
         },
         body: JSON.stringify({
           model: 'llama-3.3-70b-versatile',
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
+          messages: messages,
           response_format: responseMimeType === 'application/json' ? { type: 'json_object' } : undefined,
           temperature: 0.1,
           max_tokens: 4096,
@@ -59,6 +60,7 @@ async function callLLM(prompt, responseMimeType = 'application/json', forceGemin
     generationConfig: responseMimeType === 'application/json' ? {
       responseMimeType: 'application/json',
     } : undefined,
+    systemInstruction: systemPrompt || undefined
   });
 
   const result = await generateContentWithRetry(model, prompt);
@@ -106,61 +108,62 @@ async function generateContentWithRetry(model, prompt, retries = 3, delayMs = 30
  * Parses raw resume text into structured JSON.
  */
 export async function parseResume(rawText) {
-  const prompt = `
-    You are an expert resume parsing AI. Parse the following raw resume text into a structured JSON object.
-    
-    The JSON structure MUST follow this format:
+  const systemPrompt = 'You are a strict resume parsing utility. Your job is to extract data from the raw resume text provided in the user message and output it as a valid JSON object matching the requested schema. You must be extremely concise, extract details verbatim, and NEVER invent, hallucinate, or add any mock/placeholder data. Keep all experience descriptions and project descriptions to a MAXIMUM of 1 sentence. Do NOT wrap the response in markdown code blocks. Respond ONLY with the valid JSON.';
+  
+  const prompt = `Here is the raw resume text:
+<resume_text>
+${rawText}
+</resume_text>
+
+Task: Extract data from the raw resume text above and output it as a valid JSON object matching the requested schema.
+Do NOT continue, autocomplete, or extend the raw resume text. Respond ONLY with the valid JSON.
+
+JSON Schema format to follow:
+{
+  "contact": {
+    "name": "Full Name",
+    "email": "Email address",
+    "phone": "Phone number or empty string",
+    "location": "City, State, Country or empty string",
+    "website": "LinkedIn/GitHub link or empty string"
+  },
+  "summary": "Brief summary statement",
+  "experience": [
     {
-      "contact": {
-        "name": "Full Name",
-        "email": "Email address",
-        "phone": "Phone number or empty string",
-        "location": "City, State, Country or empty string",
-        "website": "LinkedIn/GitHub link or empty string"
-      },
-      "summary": "Brief summary or objective statement (extract or summarize if none exists)",
-      "experience": [
-        {
-          "company": "Company Name",
-          "role": "Job Title",
-          "startDate": "Start date (e.g. Month Year or Year)",
-          "endDate": "End date (e.g. Month Year, Year, or Present)",
-          "location": "City, State or empty string",
-          "description": [
-            "Bullet point detailing responsibility or achievement",
-            "Another bullet point..."
-          ]
-        }
-      ],
-      "education": [
-        {
-          "institution": "University/School Name",
-          "degree": "Degree (e.g. Bachelor of Science)",
-          "fieldOfStudy": "Field of study (e.g. Computer Science)",
-          "startDate": "Start date or empty string",
-          "endDate": "End date or Graduation date",
-          "grade": "GPA or Grade if available, else empty string"
-        }
-      ],
-      "skills": ["Skill 1", "Skill 2", ...],
-      "projects": [
-        {
-          "title": "Project Title",
-          "description": "Short description of what was built and achieved",
-          "techStack": ["React", "Node.js", ...],
-          "url": "Project URL or empty string"
-        }
+      "company": "Company Name",
+      "role": "Job Title",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "location": "Location",
+      "description": [
+        "verbatim bullet point 1",
+        "verbatim bullet point 2"
       ]
     }
-
-    Extract all information accurately. If a section is missing, return an empty array. Do not invent details.
-    
-    Raw Resume Text:
-    ${rawText}
-  `;
+  ],
+  "education": [
+    {
+      "institution": "University/School Name",
+      "degree": "Degree",
+      "fieldOfStudy": "Field of study",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "grade": "GPA/Grade"
+    }
+  ],
+  "skills": ["Skill 1", "Skill 2"],
+  "projects": [
+    {
+      "title": "Project Title",
+      "description": "Short description of what was built and achieved",
+      "techStack": ["React", "Node.js"],
+      "url": "Project URL or empty string"
+    }
+  ]
+}`;
 
   try {
-    const text = await callLLM(prompt);
+    const text = await callLLM(prompt, 'application/json', false, systemPrompt);
     return cleanJsonResponse(text);
   } catch (error) {
     console.error('Error in parseResume:', error);
