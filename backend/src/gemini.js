@@ -14,10 +14,10 @@ const genAI = new GoogleGenerativeAI(apiKey);
  * Universal router that calls Groq (using LLaMA-3.3-70b-specdec) if a Groq key is set,
  * or falls back to Gemini 2.0 Flash. This solves Free Tier rate limits.
  */
-async function callLLM(prompt, responseMimeType = 'application/json') {
+async function callLLM(prompt, responseMimeType = 'application/json', forceGemini = false) {
   const groqApiKey = process.env.GROQ_API_KEY;
   
-  if (groqApiKey) {
+  if (groqApiKey && !forceGemini) {
     console.log('Routing request to Groq LLM Engine...');
     try {
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -35,7 +35,9 @@ async function callLLM(prompt, responseMimeType = 'application/json') {
             }
           ],
           response_format: responseMimeType === 'application/json' ? { type: 'json_object' } : undefined,
-          temperature: 0.1
+          temperature: 0.1,
+          max_tokens: 4096,
+          max_completion_tokens: 4096
         })
       });
 

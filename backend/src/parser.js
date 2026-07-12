@@ -9,12 +9,13 @@ import mammoth from 'mammoth';
  */
 export async function parseResumeText(buffer, mimetype) {
   try {
+    let text = '';
     if (mimetype === 'application/pdf') {
       const parsed = await pdf(buffer);
       if (!parsed.text) {
         throw new Error('PDF parsed text is empty');
       }
-      return parsed.text;
+      text = parsed.text;
     } else if (
       mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
       mimetype === 'application/msword'
@@ -23,12 +24,15 @@ export async function parseResumeText(buffer, mimetype) {
       if (!result.value) {
         throw new Error('DOCX extracted text is empty');
       }
-      return result.value;
+      text = result.value;
     } else if (mimetype === 'text/plain') {
-      return buffer.toString('utf-8');
+      text = buffer.toString('utf-8');
     } else {
       throw new Error(`Unsupported file type: ${mimetype}. Only PDF, DOCX, and TXT are supported.`);
     }
+
+    // Clean null bytes and control characters that break API gateways and JSON parsing
+    return text.replace(/\0/g, '').replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F]/g, '');
   } catch (error) {
     console.error('Error during file text extraction:', error);
     throw new Error(`Failed to parse resume: ${error.message}`);
