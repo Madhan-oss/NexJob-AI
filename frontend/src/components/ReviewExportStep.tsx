@@ -265,6 +265,27 @@ export const ReviewExportStep: React.FC = () => {
                   />
                 </div>
 
+                {/* Education Row */}
+                {parsedResume?.education && parsedResume.education.length > 0 && (
+                  <div className="border border-border-warm bg-surface-warm p-6 rounded-2xl dark:border-border-dark dark:bg-surface-dark shadow-sm">
+                    <span className="text-[10px] uppercase font-bold text-brand-primary tracking-wider">Education</span>
+                    <div className="space-y-3 mt-4">
+                      {parsedResume.education.map((edu, idx) => (
+                        <div key={idx} className="p-3.5 bg-bg-warm dark:bg-bg-dark border border-border-warm/40 dark:border-border-dark/40 rounded-xl text-xs space-y-1">
+                          <div className="flex justify-between font-bold text-text-primary-light dark:text-text-primary-dark">
+                            <span>{edu.institution}</span>
+                            <span className="text-text-muted font-normal text-[11px]">{edu.endDate ? `Graduated: ${edu.endDate}` : ''}</span>
+                          </div>
+                          <p className="text-text-muted font-medium">
+                            {[edu.degree, edu.fieldOfStudy].filter(Boolean).join(' in ')}
+                            {edu.grade && <span className="text-brand-primary italic"> &middot; Grade/GPA: {edu.grade}</span>}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Projects Row */}
                 <div className="border border-border-warm bg-surface-warm p-6 rounded-2xl dark:border-border-dark dark:bg-surface-dark shadow-sm">
                   <span className="text-[10px] uppercase font-bold text-brand-primary tracking-wider">Projects (Base & Approved Suggested)</span>
@@ -314,6 +335,130 @@ export const ReviewExportStep: React.FC = () => {
                     {tailoredResume.projects.length === 0 && (
                       <p className="text-xs text-text-muted italic text-center py-4">No projects included in this tailored version.</p>
                     )}
+                  </div>
+                </div>
+
+                {/* Hidden print element so window.print() always prints paper resume even in split view */}
+                <div className="hidden print:block">
+                  <div className="bg-white p-8 text-black font-sans print-container">
+                    <div className="text-center mb-6">
+                      <h1 className="text-2xl font-bold text-slate-800 uppercase tracking-wide">
+                        {parsedResume?.contact.name || 'Your Name'}
+                      </h1>
+                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                        {[
+                          parsedResume?.contact.email,
+                          parsedResume?.contact.phone,
+                          parsedResume?.contact.location,
+                          parsedResume?.contact.website
+                        ].filter(Boolean).join('  |  ')}
+                      </p>
+                    </div>
+
+                    {tailoredResume.summary && (
+                      <div className="mb-5">
+                        <h3 className="text-xs font-bold text-slate-800 uppercase border-b border-slate-300 pb-0.5 tracking-wider">
+                          Professional Summary
+                        </h3>
+                        <p className="text-xs text-slate-700 mt-2 leading-relaxed text-justify">
+                          {tailoredResume.summary}
+                        </p>
+                      </div>
+                    )}
+
+                    {tailoredResume.experience && tailoredResume.experience.length > 0 && (
+                      <div className="mb-5">
+                        <h3 className="text-xs font-bold text-slate-800 uppercase border-b border-slate-300 pb-0.5 tracking-wider">
+                          Professional Experience
+                        </h3>
+                        <div className="space-y-4 mt-3">
+                          {tailoredResume.experience.map((job, idx) => (
+                            <div key={idx} className="space-y-1">
+                              <div className="flex justify-between items-baseline">
+                                <span className="text-xs font-bold text-slate-800">
+                                  {job.company} <span className="text-[10px] font-normal text-slate-500 italic">— {job.location}</span>
+                                </span>
+                                <span className="text-[10px] font-bold text-slate-500">
+                                  {job.startDate} - {job.endDate}
+                                </span>
+                              </div>
+                              <div className="text-[10px] font-bold text-slate-700 italic">
+                                {job.role}
+                              </div>
+                              <ul className="list-disc list-inside text-xs text-slate-700 space-y-1 pl-1 leading-relaxed">
+                                {job.description.map((bullet, i) => (
+                                  <li key={i} className="pl-1">
+                                    {bullet.tailoredText}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {parsedResume?.education && parsedResume.education.length > 0 && (
+                      <div className="mb-5">
+                        <h3 className="text-xs font-bold text-slate-800 uppercase border-b border-slate-300 pb-0.5 tracking-wider">
+                          Education
+                        </h3>
+                        <div className="space-y-2 mt-3">
+                          {parsedResume.education.map((edu, idx) => (
+                            <div key={idx} className="space-y-0.5">
+                              <div className="flex justify-between items-baseline">
+                                <span className="text-xs font-bold text-slate-800">{edu.institution}</span>
+                                <span className="text-[10px] font-bold text-slate-500">{edu.endDate ? `Graduated: ${edu.endDate}` : ''}</span>
+                              </div>
+                              <div className="text-xs text-slate-700">
+                                {[edu.degree, edu.fieldOfStudy].filter(Boolean).join(' in ')}
+                                {edu.grade && <span className="text-[10px] text-slate-500 italic"> — Grade/GPA: {edu.grade}</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {tailoredResume.skills && tailoredResume.skills.length > 0 && (
+                      <div className="mb-5">
+                        <h3 className="text-xs font-bold text-slate-800 uppercase border-b border-slate-300 pb-0.5 tracking-wider">
+                          Technical Skills
+                        </h3>
+                        <p className="text-xs text-slate-700 mt-2 leading-relaxed">
+                          {tailoredResume.skills.join(', ')}
+                        </p>
+                      </div>
+                    )}
+
+                    {tailoredResume.projects && tailoredResume.projects.length > 0 && (
+                      <div className="mb-5">
+                        <h3 className="text-xs font-bold text-slate-800 uppercase border-b border-slate-300 pb-0.5 tracking-wider">
+                          Projects
+                        </h3>
+                        <div className="space-y-3 mt-3">
+                          {tailoredResume.projects.map((proj, idx) => (
+                            <div key={idx} className="space-y-1">
+                              <div className="flex justify-between items-baseline">
+                                <span className="text-xs font-bold text-slate-800">
+                                  {proj.title} 
+                                  {proj.techStack.length > 0 && (
+                                    <span className="text-[10px] font-normal text-slate-500 italic"> ({proj.techStack.join(', ')})</span>
+                                  )}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-700 leading-relaxed">
+                                {proj.description}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="text-[9px] text-slate-400 text-center border-t border-slate-100 pt-3 mt-6">
+                      NexJob AI &middot; Tailored ATS Resume
+                    </div>
                   </div>
                 </div>
               </div>
@@ -380,6 +525,41 @@ export const ReviewExportStep: React.FC = () => {
                   </div>
                 )}
 
+                {/* Education */}
+                {parsedResume?.education && parsedResume.education.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-xs font-bold text-brand-primary uppercase border-b border-slate-200 dark:border-border-dark pb-0.5 tracking-wider">
+                      Education
+                    </h3>
+                    <div className="space-y-2 mt-3">
+                      {parsedResume.education.map((edu, idx) => (
+                        <div key={idx} className="space-y-0.5">
+                          <div className="flex justify-between items-baseline">
+                            <span className="text-xs font-bold text-slate-800 dark:text-white">{edu.institution}</span>
+                            <span className="text-[10px] font-bold text-slate-500">{edu.endDate ? `Graduated: ${edu.endDate}` : ''}</span>
+                          </div>
+                          <div className="text-xs text-slate-700 dark:text-slate-300">
+                            {[edu.degree, edu.fieldOfStudy].filter(Boolean).join(' in ')}
+                            {edu.grade && <span className="text-[10px] text-slate-500 italic font-semibold"> — Grade/GPA: {edu.grade}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Skills */}
+                {tailoredResume.skills && tailoredResume.skills.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-xs font-bold text-brand-primary uppercase border-b border-slate-200 dark:border-border-dark pb-0.5 tracking-wider">
+                      Technical Skills
+                    </h3>
+                    <p className="text-xs text-slate-700 dark:text-slate-300 mt-2 leading-relaxed">
+                      {tailoredResume.skills.join(', ')}
+                    </p>
+                  </div>
+                )}
+
                 {/* Projects */}
                 {tailoredResume.projects && tailoredResume.projects.length > 0 && (
                   <div className="mb-6">
@@ -406,17 +586,9 @@ export const ReviewExportStep: React.FC = () => {
                   </div>
                 )}
 
-                {/* Skills */}
-                {tailoredResume.skills && tailoredResume.skills.length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-xs font-bold text-brand-primary uppercase border-b border-slate-200 dark:border-border-dark pb-0.5 tracking-wider">
-                      Technical Skills
-                    </h3>
-                    <p className="text-xs text-slate-700 dark:text-slate-300 mt-2 leading-relaxed">
-                      {tailoredResume.skills.join(', ')}
-                    </p>
-                  </div>
-                )}
+                <div className="text-[9px] text-slate-400 text-center border-t border-slate-100 dark:border-border-dark pt-3 mt-6">
+                  NexJob AI &middot; Tailored ATS Resume
+                </div>
               </div>
             )}
           </div>
@@ -442,10 +614,10 @@ export const ReviewExportStep: React.FC = () => {
 
                 <button
                   onClick={handlePrintPdf}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-border-warm hover:border-brand-primary text-text-primary-light dark:border-border-dark dark:bg-bg-dark/40 dark:text-text-primary-dark py-3 text-xs font-bold transition-all duration-300 active:scale-98 cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-black text-white py-3 text-xs font-bold transition-all duration-300 active:scale-98 cursor-pointer shadow-sm"
                 >
                   <Printer size={14} />
-                  Print / Save to PDF
+                  Save as PDF / Print
                 </button>
               </div>
             </div>
