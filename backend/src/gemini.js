@@ -238,4 +238,38 @@ export async function tailorResumeAndCoverLetter(parsedResume, jdAnalysis, tone 
 }
 
 
+/**
+ * Generates a single AI-suggested portfolio project tailored to a specific job.
+ * Returns one project with title, description, techStack, and relevanceReason.
+ */
+export async function generateProject(jdAnalysis, existingProjectTitles = []) {
+  const systemPrompt = 'You are a senior software engineer and career coach. Generate one realistic, buildable portfolio project for a fresher/junior developer that directly demonstrates skills required by the target job. The project must be practical and completable within 2-4 weeks. Respond ONLY with valid JSON.';
 
+  const avoidList = existingProjectTitles.length > 0
+    ? `\nAvoid creating projects with these titles (already exist): ${existingProjectTitles.join(', ')}`
+    : '';
+
+  const prompt = `Job Role: ${jdAnalysis.title || 'Software Developer'}
+Company: ${jdAnalysis.company || 'Unknown'}
+Required Skills: ${(jdAnalysis.requiredSkills || []).join(', ')}
+Preferred Skills: ${(jdAnalysis.preferredSkills || []).join(', ')}
+Experience Level: ${jdAnalysis.experienceLevel || 'Entry-level'}
+${avoidList}
+
+Generate ONE unique portfolio project for this job. Return this exact JSON:
+{"title":"","description":"","techStack":[],"relevanceReason":""}
+
+Rules:
+- title: Short, specific project name (e.g. "AI Resume Screener API")
+- description: 2-3 sentences describing what it does, key features, and any metrics/achievements
+- techStack: Array of 3-6 specific technologies from the required/preferred skills
+- relevanceReason: One sentence explaining exactly why this project proves fit for the role`;
+
+  try {
+    const text = await callLLM(prompt, 'application/json', false, systemPrompt);
+    return cleanJsonResponse(text);
+  } catch (error) {
+    console.error('Error in generateProject:', error);
+    throw new Error(`Project generation failed: ${error.message}`);
+  }
+}

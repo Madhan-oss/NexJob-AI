@@ -43,6 +43,7 @@ export const GenerationStep: React.FC = () => {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingText, setLoadingText] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [generatingProject, setGeneratingProject] = useState(false);
 
   const simulateLoading = () => {
     const statuses = [
@@ -118,6 +119,42 @@ export const GenerationStep: React.FC = () => {
     } finally {
       clearInterval(loadingTimer);
       setLoading(false);
+    }
+  };
+
+  const handleGenerateProject = async () => {
+    if (!jdAnalysis) return;
+    setGeneratingProject(true);
+    setError(null);
+
+    try {
+      const existingTitles = (suggestedProjects || []).map(p => p.title);
+      const response = await fetch('/api/generate-project', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jdAnalysis,
+          existingProjectTitles: existingTitles
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Failed to generate AI project.');
+      }
+
+      const data = await response.json();
+      if (data.project) {
+        const currentProjects = suggestedProjects || [];
+        // preserve current added status for existing projects
+        const updated = [...currentProjects, { ...data.project, added: false }];
+        setSuggestedProjects(updated);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Error generating AI project suggestion.');
+    } finally {
+      setGeneratingProject(false);
     }
   };
 
@@ -245,7 +282,7 @@ export const GenerationStep: React.FC = () => {
           </div>
 
           <div className="border border-border-warm bg-surface-warm p-6 rounded-3xl dark:border-border-dark dark:bg-surface-dark shadow-sm">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
               <div>
                 <h3 className="text-sm font-bold text-text-primary-light dark:text-text-primary-dark flex items-center gap-1.5">
                   <Sparkles size={16} className="text-brand-primary" /> AI-Suggested Project Additions
@@ -254,6 +291,18 @@ export const GenerationStep: React.FC = () => {
                   Closing gap with target stack. These projects fit the JD requirements. Check what fits your background, then inject to resume.
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={handleGenerateProject}
+                disabled={generatingProject}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-primary text-white text-xs font-bold hover:bg-brand-hover active:scale-95 transition-all shadow cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0"
+              >
+                {generatingProject ? (
+                  <><Loader2 size={13} className="animate-spin" /> Generating Project...</>
+                ) : (
+                  <><Sparkles size={13} /> Generate AI Project</>
+                )}
+              </button>
             </div>
 
             {/* List of projects */}

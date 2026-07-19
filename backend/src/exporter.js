@@ -32,7 +32,7 @@ export async function generateDocx(data) {
           new TextRun({
             text: contact.name || 'Your Name',
             bold: true,
-            size: 32, // 16pt
+            size: 40, // 20pt — ATS spec for Name
             font: 'Calibri',
             color: '2D2A26',
           }),
@@ -79,9 +79,9 @@ export async function generateDocx(data) {
         new TextRun({
           text: title.toUpperCase(),
           bold: true,
-          size: 24, // 12pt
+          size: 28, // 14pt — ATS spec for section headings
           font: 'Calibri',
-          color: 'D97757', // Terracotta Primary Accent
+          color: 'D97757',
         }),
       ],
     });
@@ -312,7 +312,16 @@ export async function generateDocx(data) {
   const doc = new Document({
     sections: [
       {
-        properties: {},
+        properties: {
+          page: {
+            margin: {
+              top: 720,    // 0.5 inch (720 twips)
+              bottom: 720,
+              left: 720,
+              right: 720,
+            },
+          },
+        },
         children: children,
       },
     ],

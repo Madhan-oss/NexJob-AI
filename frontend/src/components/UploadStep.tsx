@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import { motion } from 'framer-motion';
-import { UploadCloud, FileText, ArrowRight, X, Sparkles, Loader2 } from 'lucide-react';
+import { UploadCloud, FileText, ArrowRight, X, Sparkles, Loader2, FilePlus } from 'lucide-react';
 
 export const UploadStep: React.FC = () => {
   const { 
@@ -19,8 +19,11 @@ export const UploadStep: React.FC = () => {
   const [parsing, setParsing] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [jdFile, setJdFile] = useState<File | null>(null);
+  const [jdUploading, setJdUploading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const jdFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -93,6 +96,32 @@ export const UploadStep: React.FC = () => {
   const handleRemoveFile = () => {
     setFile(null);
     setError(null);
+  };
+
+  const processJdFile = async (selectedFile: File) => {
+    setError(null);
+    setJdUploading(true);
+    setJdFile(selectedFile);
+    try {
+      const formData = new FormData();
+      formData.append('jdFile', selectedFile);
+      const response = await fetch('/api/extract-jd', { method: 'POST', body: formData });
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Failed to extract JD text.');
+      }
+      const result = await response.json();
+      setJdText(result.text);
+    } catch (err: any) {
+      setError(err.message || 'Error reading JD file.');
+      setJdFile(null);
+    } finally {
+      setJdUploading(false);
+    }
+  };
+
+  const handleJdFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) processJdFile(e.target.files[0]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -244,21 +273,62 @@ export const UploadStep: React.FC = () => {
 
           {/* Right Column: Job Description */}
           <div className="flex flex-col space-y-3">
-            <label className="text-sm font-bold tracking-tight text-text-primary-light dark:text-text-primary-dark flex items-center justify-between">
-              <span>2. Paste Job Description</span>
-              {jdText.length > 0 && (
-                <span className="text-[10px] text-text-muted font-semibold">
-                  {jdText.split(/\s+/).filter(Boolean).length} words
-                </span>
-              )}
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-bold tracking-tight text-text-primary-light dark:text-text-primary-dark">
+                2. Paste or Upload Job Description
+              </label>
+              <div className="flex items-center gap-2">
+                {jdText.length > 0 && (
+                  <span className="text-[10px] text-text-muted font-semibold">
+                    {jdText.split(/\s+/).filter(Boolean).length} words
+                  </span>
+                )}
+                {/* JD File Upload Button */}
+                <input
+                  ref={jdFileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.docx,.doc,.txt"
+                  onChange={handleJdFileInput}
+                />
+                <button
+                  type="button"
+                  onClick={() => jdFileInputRef.current?.click()}
+                  disabled={jdUploading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-primary/40 bg-brand-primary/5 text-[11px] font-bold text-brand-primary hover:bg-brand-primary/10 transition-all duration-200 disabled:opacity-50 cursor-pointer"
+                >
+                  {jdUploading ? (
+                    <><Loader2 size={11} className="animate-spin" /> Extracting...</>
+                  ) : (
+                    <><FilePlus size={11} /> Upload JD File</>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* JD File badge */}
+            {jdFile && !jdUploading && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-brand-primary/5 border border-brand-primary/20 text-[11px] font-semibold text-brand-primary">
+                <FileText size={12} />
+                <span className="truncate max-w-[180px]">{jdFile.name}</span>
+                <button
+                  type="button"
+                  onClick={() => { setJdFile(null); setJdText(''); }}
+                  className="ml-auto hover:text-brand-hover transition-colors"
+                >
+                  <X size={11} />
+                </button>
+              </div>
+            )}
+
             <textarea
               value={jdText}
               onChange={(e) => setJdText(e.target.value)}
-              placeholder="Paste the full job posting here, including description, requirements, skills, and about the company..."
+              placeholder="Paste the full job posting here, or upload a PDF/DOCX file above..."
               className="flex-1 w-full border border-border-warm bg-surface-warm p-4 rounded-2xl text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 dark:border-border-dark dark:bg-surface-dark text-text-primary-light dark:text-text-primary-dark placeholder:text-text-muted/65 transition-all duration-300 min-h-[250px] resize-none font-sans"
             />
           </div>
+
         </div>
 
         {/* Error Messaging */}

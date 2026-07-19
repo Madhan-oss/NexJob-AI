@@ -6,7 +6,8 @@ import { parseResumeText } from './src/parser.js';
 import { 
   parseResume, 
   analyzeAndScore, 
-  tailorResumeAndCoverLetter
+  tailorResumeAndCoverLetter,
+  generateProject
 } from './src/gemini.js';
 import { generateDocx } from './src/exporter.js';
 import { saveResume, saveJobDescription, saveTailoredResult } from './src/db.js';
@@ -193,6 +194,43 @@ app.post('/api/export', async (req, res) => {
   } catch (error) {
     console.error('Error in /api/export:', error);
     res.status(500).json({ error: error.message || 'Failed to export document.' });
+  }
+});
+
+/**
+ * 7. Extract JD Text from Uploaded File
+ * Accepts PDF/DOCX/TXT job description file and returns extracted plain text.
+ */
+app.post('/api/extract-jd', upload.single('jdFile'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded.' });
+    }
+    console.log(`Extracting JD text from: ${req.file.originalname}`);
+    const text = await parseResumeText(req.file.buffer, req.file.mimetype);
+    res.json({ text: text.trim() });
+  } catch (error) {
+    console.error('Error in /api/extract-jd:', error);
+    res.status(500).json({ error: error.message || 'Failed to extract text from JD file.' });
+  }
+});
+
+/**
+ * 8. Generate a Single AI Project Suggestion
+ * Takes jdAnalysis and existing project titles, returns one new tailored project.
+ */
+app.post('/api/generate-project', async (req, res) => {
+  const { jdAnalysis, existingProjectTitles } = req.body;
+  if (!jdAnalysis) {
+    return res.status(400).json({ error: 'jdAnalysis is required.' });
+  }
+  try {
+    console.log('Generating AI project suggestion for:', jdAnalysis.title);
+    const project = await generateProject(jdAnalysis, existingProjectTitles || []);
+    res.json({ project });
+  } catch (error) {
+    console.error('Error in /api/generate-project:', error);
+    res.status(500).json({ error: formatGeminiError(error) });
   }
 });
 
