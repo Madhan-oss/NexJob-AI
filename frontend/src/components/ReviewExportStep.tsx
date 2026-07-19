@@ -90,7 +90,13 @@ export const ReviewExportStep: React.FC = () => {
   };
 
   const handlePrintPdf = () => {
+    const originalTitle = document.title;
+    const name = parsedResume?.contact?.name ? parsedResume.contact.name.trim().replace(/\s+/g, '_') : 'Resume';
+    document.title = `${name}_Resume`;
     window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
     celebrate();
   };
 
@@ -455,14 +461,10 @@ export const ReviewExportStep: React.FC = () => {
                         </div>
                       </div>
                     )}
-                    
-                    <div className="text-[9px] text-slate-400 text-center border-t border-slate-100 pt-3 mt-6">
-                      NexJob AI &middot; Tailored ATS Resume
                     </div>
                   </div>
                 </div>
-              </div>
-            ) : (
+              ) : (
               /* Paper Mockup Preview (Clean printable standard look) */
               <div className="border border-border-warm bg-white p-8 sm:p-12 shadow-md dark:border-border-dark dark:bg-surface-dark text-black dark:text-text-primary-dark rounded-3xl min-h-[842px] max-w-[595pt] mx-auto print-container font-sans">
                 {/* Contact details */}
@@ -586,9 +588,6 @@ export const ReviewExportStep: React.FC = () => {
                   </div>
                 )}
 
-                <div className="text-[9px] text-slate-400 text-center border-t border-slate-100 dark:border-border-dark pt-3 mt-6">
-                  NexJob AI &middot; Tailored ATS Resume
-                </div>
               </div>
             )}
           </div>
